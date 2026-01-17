@@ -5,6 +5,7 @@ const io = require('socket.io-client');
 const fs = require('fs');
 const path = require('path');
 const ip = require('ip');
+const os = require('os');
 
 // Configuration
 const DEFAULT_PORT = 3000;
@@ -15,8 +16,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve Downloads Statically (for Playback)
-app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
+// Serve Downloads Statically (for Playback) - from temp directory
+const DOWNLOADS_DIR = path.join(os.tmpdir(), 'chitrakatha_downloads');
+app.use('/downloads', express.static(DOWNLOADS_DIR));
 
 // State
 let socket = null;
@@ -199,9 +201,10 @@ app.post('/start-download', async (req, res) => {
         return res.status(400).json({ error: 'Target URL and FileName required' });
     }
 
-    const downloadDir = path.join(__dirname, 'downloads');
+    // Use writable directory (not __dirname which is read-only in pkg)
+    const downloadDir = path.join(os.tmpdir(), 'chitrakatha_downloads');
     if (!fs.existsSync(downloadDir)) {
-        fs.mkdirSync(downloadDir);
+        fs.mkdirSync(downloadDir, { recursive: true });
     }
 
     const safeName = path.basename(fileName);
@@ -216,11 +219,61 @@ app.post('/start-download', async (req, res) => {
                 return res.status(502).json({ error: `Remote returned ${response.statusCode}` });
             }
 
+            const totalSize = parseInt(response.headers['content-length'], 10);
+            let downloadedSize = 0;
+            let lastProgressEmit = 0;
+            let startTime = Date.now();
+            let lastSpeedCheck = Date.now();
+            let lastDownloadedSize = 0;
+
+            response.on('data', (chunk) => {
+                downloadedSize += chunk.length;
+
+                // Calculate speed every second
+                const now = Date.now();
+                const timeDiff = (now - lastSpeedCheck) / 1000; // seconds
+                let speed = 0;
+
+                if (timeDiff >= 1) {
+                    const bytesDiff = downloadedSize - lastDownloadedSize;
+                    speed = bytesDiff / timeDiff; // bytes per second
+                    lastSpeedCheck = now;
+                    lastDownloadedSize = downloadedSize;
+                }
+
+                // Emit progress every 5% or 1MB
+                const progress = (downloadedSize / totalSize) * 100;
+                if (progress - lastProgressEmit >= 5 || downloadedSize - lastProgressEmit >= 1024 * 1024) {
+                    lastProgressEmit = progress;
+                    if (socket && currentRoom) {
+                        socket.emit('agent_download_progress', {
+                            roomId: currentRoom,
+                            fileName: safeName,
+                            progress: Math.round(progress),
+                            downloaded: downloadedSize,
+                            total: totalSize,
+                            speed: Math.round(speed / 1024 / 1024 * 100) / 100 // MB/s
+                        });
+                    }
+                }
+            });
+
             response.pipe(file);
 
             file.on('finish', () => {
                 file.close();
                 console.log(`[Agent] Download complete: ${safeName}`);
+
+                // Emit 100% completion
+                if (socket && currentRoom) {
+                    socket.emit('agent_download_progress', {
+                        roomId: currentRoom,
+                        fileName: safeName,
+                        progress: 100,
+                        downloaded: totalSize,
+                        total: totalSize
+                    });
+                }
             });
 
             // Ack immediately that download started
