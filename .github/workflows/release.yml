@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   build:
-    name: Build Windows Executable
-    runs-on: ubuntu-latest
+    name: Build Installer
+    runs-on: windows-latest
 
     steps:
       - name: Checkout Code
@@ -27,8 +27,13 @@ jobs:
         run: npm ci
 
       - name: Build Executable
-        # Using pkg directly to ensure correct output name and target
         run: npx pkg . --target node18-win-x64 --output chitrakatha_agent.exe
+
+      - name: Compile Installer using Inno Setup
+        uses: Minionguyjosh/inno-setup-action@v1.2.2
+        with:
+          path: installer.iss
+          options: /O+
 
       - name: Create Release & Upload Asset
         uses: softprops/action-gh-release@v1
