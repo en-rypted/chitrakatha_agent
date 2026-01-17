@@ -7,7 +7,7 @@ const path = require('path');
 const ip = require('ip');
 
 // Configuration
-const DEFAULT_PORT = 5178;
+const DEFAULT_PORT = 3000;
 const PORT = process.env.PORT || DEFAULT_PORT;
 const SERVER_URL = 'https://chitrakatha-backend.onrender.com'; // Main Signaling Server
 

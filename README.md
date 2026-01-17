@@ -18,7 +18,7 @@ Download the latest `chitrakatha_agent.exe` from the [Releases Page](../../relea
 1.  **Clone this repo**:
     ```bash
     git clone https://github.com/en-rypted/chitrakatha_agent.git
-    cd local-agent
+    cd chitrakatha_agent
     ```
 2.  **Install Dependencies**:
     ```bash
