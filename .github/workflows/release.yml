@@ -10,50 +10,39 @@ permissions:
 
 jobs:
   build:
-    name: Build Installer
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: 18
+          cache: npm
 
-      - name: Install Dependencies
-        run: npm ci
+      - run: npm ci
 
-      # 🔥 CLEAN FIRST
-      - name: Clean previous build
+      # CLEAN FIRST
+      - name: Clean build folders
         run: |
-          if (Test-Path build) {
-            Remove-Item -Recurse -Force build
-          }
-          if (Test-Path dist) {
-            Remove-Item -Recurse -Force dist
-          }
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+          if (Test-Path dist) { Remove-Item -Recurse -Force dist }
 
-      # 🔨 BUILD AGENT
-      - name: Build Agent Executable
+      # BUILD AGENT
+      - name: Build agent exe
         run: |
           mkdir build
           npx pkg . --target node18-win-x64 --output build/chitrakatha_agent.exe
 
-      # 📦 BUILD INSTALLER
-      - name: Compile Installer using Inno Setup
+      # BUILD INSTALLER
+      - name: Build installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           path: installer/setup.iss
 
-      # 🚀 RELEASE INSTALLER (NOT RAW EXE)
-      - name: Create Release & Upload Installer
+      # RELEASE INSTALLER
+      - name: Upload release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: dist/chitrakatha_agent.exe
           generate_release_notes: true
-          draft: false
-          prerelease: false

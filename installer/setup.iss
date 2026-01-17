@@ -3,14 +3,15 @@ AppName=Chitrakatha Agent
 AppVersion=1.0.0
 DefaultDirName={pf}\Chitrakatha
 DefaultGroupName=Chitrakatha
-OutputDir=dist
+OutputDir=..\dist
 OutputBaseFilename=chitrakatha_agent
 PrivilegesRequired=admin
 Compression=lzma
 SolidCompression=yes
+ArchitecturesInstallIn64BitMode=x64
 
 [Files]
-Source: "build\chitrakatha_agent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\chitrakatha_agent.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Chitrakatha Agent"; Filename: "{app}\chitrakatha_agent.exe"
