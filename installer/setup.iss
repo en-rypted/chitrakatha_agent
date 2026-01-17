@@ -17,11 +17,7 @@ Name: "{group}\Chitrakatha Agent"; Filename: "{app}\chitrakatha_agent.exe"
 Name: "{commondesktop}\Chitrakatha Agent"; Filename: "{app}\chitrakatha_agent.exe"
 
 [Run]
-Filename: "netsh";
-Parameters: "advfirewall firewall add rule name=""Chitrakatha Agent"" dir=in action=allow program=""{app}\chitrakatha_agent.exe"" enable=yes";
-Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""Chitrakatha Agent"" dir=in action=allow program=""{app}\chitrakatha_agent.exe"" enable=yes"; Flags: runhidden
 
 [UninstallRun]
-Filename: "netsh";
-Parameters: "advfirewall firewall delete rule name=""Chitrakatha Agent""";
-Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""Chitrakatha Agent"""; Flags: runhidden
