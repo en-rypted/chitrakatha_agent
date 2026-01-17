@@ -1,0 +1,15 @@
+# Chitrakatha Agent v1.0.0 🚀
+
+**Initial Release with High-Speed LAN Transfer!**
+
+We are excited to launch the standalone Chitrakatha Agent.
+
+## ✨ Key Features
+- **Local P2P Streaming**: Stream videos directly from your disk to viewers on your LAN.
+- **Auto-Discovery**: Zero configuration needed; just run it and it stays online.
+- **Smart MIME Detection**: Improved support for .mp4, .mkv, .webm.
+- **Visual Feedback**: Real-time logging of files and connections.
+
+## 📦 What's Included
+- `chitrakatha_agent.exe`: The standalone Windows executable.
+- `README.md`: Setup and troubleshooting guide.
