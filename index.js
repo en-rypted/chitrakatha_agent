@@ -9,7 +9,7 @@ const ip = require('ip');
 // Configuration
 const DEFAULT_PORT = 5178;
 const PORT = process.env.PORT || DEFAULT_PORT;
-const SERVER_URL = 'http://localhost:3001'; // Main Signaling Server
+const SERVER_URL = 'https://chitrakatha-backend.onrender.com'; // Main Signaling Server
 
 const app = express();
 app.use(cors());
