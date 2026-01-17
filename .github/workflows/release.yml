@@ -30,7 +30,7 @@ jobs:
         run: npx pkg . --target node18-win-x64 --output chitrakatha_agent.exe
 
       - name: Compile Installer using Inno Setup
-        uses: Minionguyjosh/inno-setup-action@v1.2.2
+        uses: dspec12/inno-setup-action@v1.2.2
         with:
           path: installer.iss
           options: /O+
