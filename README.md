@@ -60,8 +60,36 @@ PORT=6000 npm start
 
 ## 🏗️ Architecture
 *   **Tech Stack**: Node.js, Express, Socket.io Client.
-*   **Binding**: Binds to `0.0.0.0` to allow external LAN connections.
-*   **CORS**: Explicitly allows `Access-Control-Allow-Origin: *` to let the web app fetch streams.
-
----
+64:     *   Explicitly allows `Access-Control-Allow-Origin: *` to let the web app fetch streams.
+65: 
+66: ## 🌐 Using over the Internet (VPN Guide)
+67: 
+68: To use this agent securely over the internet, we recommend **ZeroTier**.
+69: 
+70: ### Phase 1: Setup ZeroTier Network
+71: 1.  Go to [zerotier.com](https://my.zerotier.com) and Create an Account.
+72: 2.  Click **"Create A Network"**.
+73: 3.  Copy the **Network ID** (e.g., `8056c2e21c000001`).
+74: 4.  In Network Settings, ensure **Access Control** is set to **Private**.
+75: 
+76: ### Phase 2: Install & Join (On BOTH Computers)
+77: 1.  Download & Install ZeroTier on both Host and Viewer computers.
+78: 2.  Open ZeroTier (look for the icon in the **System Tray / Show Hidden Icons** menu).
+79: 3.  Right-click -> **"Join Network"**.
+80: 4.  Paste your **Network ID** and click Join.
+81: 5.  **Important:** Go back to the ZeroTier Website Dashboard, scroll to "Members", and check the **Auth** box for both computers.
+82: 
+83: ### Phase 3: Configure Local Agent (Host PC Only)
+84: 1.  In the ZeroTier Dashboard, find the **Managed IP** for your Host PC (e.g., `10.147.17.5`).
+85: 2.  Open the folder where you installed this agent.
+86: 3.  Open `agent-config.json` with Notepad (create it if missing).
+87: 4.  Update the IP to your **ZeroTier IP**:
+88:     ```json
+89:     {
+90:         "AGENT_IP": "10.147.17.5"
+91:     }
+92:     ```
+93: 5.  Save the file and **Restart the Agent**.
+94: 
+95: ---
 Built with ❤️ for Chitrakatha.
