@@ -10,7 +10,7 @@ const os = require('os');
 // Configuration
 const DEFAULT_PORT = 3000;
 const PORT = process.env.PORT || DEFAULT_PORT;
-const SERVER_URL = 'http://localhost:3001'; // 'https://chitrakatha-backend.onrender.com'; // Main Signaling Server
+const SERVER_URL = process.env.SERVER_URL || 'https://chitrakatha-backend.onrender.com'; // Main Signaling Server
 
 const app = express();
 app.use(cors());
@@ -26,7 +26,25 @@ let activeFile = null; // { id, path, name, size, type }
 let currentRoom = null;
 
 // Helper: Get Local LAN IP
-const getLocalIp = () => ip.address();
+// Helper: Get Local LAN IP
+const getLocalIp = () => {
+    // 1. Environment Variable (Highest Priority)
+    if (process.env.AGENT_IP) return process.env.AGENT_IP;
+
+    // 2. Config File (agent-config.json in same folder as exe)
+    try {
+        const configPath = path.join(process.cwd(), 'agent-config.json');
+        if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (config.AGENT_IP) return config.AGENT_IP;
+        }
+    } catch (err) {
+        console.error("Error reading config file:", err.message);
+    }
+
+    // 3. Auto-detect (Default)
+    return ip.address();
+};
 
 // --- API Endpoints ---
 
@@ -299,8 +317,12 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`
     🚀 Local Agent running!
     ---------------------
+
     Port:   ${PORT}
     IP:     ${getLocalIp()} (LAN)
+    * To override IP:
+      1. Set AGENT_IP env var, OR
+      2. Create 'agent-config.json' with {"AGENT_IP": "..."}
     Status: http://localhost:${PORT}/status
     `);
 });

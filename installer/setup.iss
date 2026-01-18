@@ -12,6 +12,9 @@ ArchitecturesInstallIn64BitMode=x64
 
 [Files]
 Source: "..\build\chitrakatha_agent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\agent-config.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\instructions.md"; DestDir: "{app}"; Flags: isreadme
+
 
 [Icons]
 Name: "{group}\Chitrakatha Agent"; Filename: "{app}\chitrakatha_agent.exe"
