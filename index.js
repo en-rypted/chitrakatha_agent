@@ -10,7 +10,7 @@ const os = require('os');
 // Configuration
 const DEFAULT_PORT = 3000;
 const PORT = process.env.PORT || DEFAULT_PORT;
-const SERVER_URL = 'https://chitrakatha-backend.onrender.com'; // Main Signaling Server
+const SERVER_URL = 'http://localhost:3001'; // 'https://chitrakatha-backend.onrender.com'; // Main Signaling Server
 
 const app = express();
 app.use(cors());
@@ -219,26 +219,31 @@ app.post('/start-download', async (req, res) => {
                 return res.status(502).json({ error: `Remote returned ${response.statusCode}` });
             }
 
-            const totalSize = parseInt(response.headers['content-length'], 10);
+            let totalSize = parseInt(response.headers['content-length'], 10);
             let downloadedSize = 0;
             let lastProgressEmit = 0;
-            let startTime = Date.now();
             let lastSpeedCheck = Date.now();
             let lastDownloadedSize = 0;
+            let currentSpeed = 0; // Maintain speed between chunks
+            let startTime = Date.now();
 
             response.on('data', (chunk) => {
                 downloadedSize += chunk.length;
 
-                // Calculate speed every second
+                // Calculate speed every 250ms (was 1s) to catch faster local transfers
                 const now = Date.now();
                 const timeDiff = (now - lastSpeedCheck) / 1000; // seconds
-                let speed = 0;
 
-                if (timeDiff >= 1) {
+                if (timeDiff >= 0.25) {
                     const bytesDiff = downloadedSize - lastDownloadedSize;
-                    speed = bytesDiff / timeDiff; // bytes per second
+                    currentSpeed = bytesDiff / timeDiff; // bytes per second
                     lastSpeedCheck = now;
                     lastDownloadedSize = downloadedSize;
+                }
+
+                // If speed is 0 but we have downloaded something in a very short time, estimate it
+                if (currentSpeed === 0 && timeDiff > 0 && downloadedSize > 0) {
+                    currentSpeed = downloadedSize / ((now - startTime) / 1000 || 0.001);
                 }
 
                 // Emit progress every 5% or 1MB
@@ -252,7 +257,7 @@ app.post('/start-download', async (req, res) => {
                             progress: Math.round(progress),
                             downloaded: downloadedSize,
                             total: totalSize,
-                            speed: Math.round(speed / 1024 / 1024 * 100) / 100 // MB/s
+                            speed: Math.round(currentSpeed / 1024 / 1024 * 100) / 100 // MB/s
                         });
                     }
                 }
