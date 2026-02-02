@@ -1,11 +1,15 @@
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const io = require('socket.io-client');
-const fs = require('fs');
-const path = require('path');
-const ip = require('ip');
-const os = require('os');
+import express from 'express';
+import http from 'http';
+import cors from 'cors';
+import io from 'socket.io-client';
+import fs from 'fs';
+import path from 'path';
+import ip from 'ip';
+import os from 'os';
+import { fileURLToPath } from 'url';
+
+// Import Streaming Logic
+import { prepareStream, handleStreamRequest, activeStreams } from './streamHandler.js';
 
 // Configuration
 const DEFAULT_PORT = 3000;
@@ -16,16 +20,46 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Global error handlers to prevent crashes from stream errors
+process.on('uncaughtException', (err) => {
+    if (err.message && err.message.includes('closed prematurely')) {
+        console.log('[Agent] Stream closed (handled globally)');
+    } else {
+        console.error('[Agent] Fatal Error:', err.message);
+        console.error(err.stack);
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[Agent] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+
 // Serve Downloads Statically (for Playback) - from temp directory
 const DOWNLOADS_DIR = path.join(os.tmpdir(), 'chitrakatha_downloads');
 app.use('/downloads', express.static(DOWNLOADS_DIR));
 
 // State
 let socket = null;
-let activeFile = null; // { id, path, name, size, type }
+let activeFile = null; // Legacy: kept for simple file picking if needed, or we adapt
 let currentRoom = null;
 
-// Helper: Get Local LAN IP
+// Setup global callback for metadata updates
+global.metadataUpdateCallback = (streamId, metadata) => {
+    console.log(`[Agent] Metadata update for stream ${streamId}: duration=${metadata.duration}s`);
+
+    // Emit to room if connected
+    if (socket && currentRoom) {
+        socket.emit('torrent_metadata_update', {
+            roomId: currentRoom,
+            streamId: streamId,
+            duration: metadata.duration,
+            streams: metadata.streams || []
+        });
+        console.log(`[Agent] Emitted metadata update to room ${currentRoom}`);
+    }
+};
+
 // Helper: Get Local LAN IP
 const getLocalIp = () => {
     // 1. Environment Variable (Highest Priority)
@@ -55,66 +89,97 @@ app.get('/status', (req, res) => {
         version: '1.0.0',
         port: PORT,
         room: currentRoom,
+        room: currentRoom,
         ip: getLocalIp(),
-        activeFile: activeFile ? { name: activeFile.name, size: activeFile.size } : null
+        activeFile: activeFile || null
     });
 });
 
-// 2. Select File (Simulation for MVP: Scans a 'shared' folder or accepts path)
-app.post('/select-file', (req, res) => {
-    // strict "No Browser" generic file picker is hard in pure Node without Electron.
-    // For this MVP, we will accept a raw path OR look in a ./shared folder
-    const { filePath } = req.body;
+// 2. UNIFIED PLAY ENDPOINT (Replaces Select File)
+app.post('/play', async (req, res) => {
+    const { url, type } = req.body; // type: 'file' | 'url' | 'magnet'
 
-    if (!filePath) {
-        return res.status(400).json({ error: 'FilePath required' });
-    }
+    if (!url) return res.status(400).json({ error: 'URL/Path required' });
 
     try {
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'File not found' });
-        }
+        console.log(`[Agent] preparing stream for: ${url} (${type})`);
+        const metadata = await prepareStream(url, type);
 
-        const stats = fs.statSync(filePath);
-
-        // Detect MIME Type
-        const ext = path.extname(filePath).toLowerCase();
-        let mimeType = 'application/octet-stream';
-        if (ext === '.mp4') mimeType = 'video/mp4';
-        else if (ext === '.mkv') mimeType = 'video/x-matroska'; // Note: Browsers struggle with MKV directly
-        else if (ext === '.webm') mimeType = 'video/webm';
-        else if (ext === '.avi') mimeType = 'video/x-msvideo';
-
-        console.log(`[Agent] Detected MIME: ${mimeType} for extension: ${ext}`);
-
+        // Update global active file for status checks (legacy compatibility)
         activeFile = {
-            id: Date.now().toString(), // Simple ID
-            path: filePath,
-            name: path.basename(filePath),
-            size: stats.size,
-            type: mimeType
+            id: metadata.id,
+            name: metadata.name,
+            size: metadata.size,
+            duration: metadata.duration,
+            type: 'video/mp4' // We standardise on MP4 for streaming
         };
 
-        console.log(`[Agent] File selected: ${activeFile.name}`);
-
-        // If connected, announce to room
+        // If connected, announce to room (Sync)
         if (socket && currentRoom) {
             socket.emit('agent_file_announce', {
                 roomId: currentRoom,
                 file: {
-                    id: activeFile.id,
-                    name: activeFile.name,
-                    size: activeFile.size,
+                    id: metadata.id,
+                    name: metadata.name,
+                    size: metadata.size,
+                    duration: metadata.duration,
+                    streams: metadata.streams,
                     ip: getLocalIp(),
                     port: PORT
                 }
             });
         }
 
+        res.json({
+            success: true,
+            streamId: metadata.id,
+            name: metadata.name,
+            duration: metadata.duration,
+            streams: metadata.streams
+        });
+
+    } catch (err) {
+        console.error("[Agent] Play Error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Legacy Endpoint for older clients (maps to new logic mainly for local files)
+app.post('/select-file', async (req, res) => {
+    const { filePath } = req.body;
+    if (!filePath) return res.status(400).json({ error: 'FilePath required' });
+
+    try {
+        // Redirect to new logic
+        // We assume it's a file
+        console.log(`[Agent] Legacy select-file called for: ${filePath}`);
+        const metadata = await prepareStream(filePath, 'file');
+
+        activeFile = {
+            id: metadata.id,
+            name: metadata.name,
+            size: metadata.size,
+            type: 'video/mp4'
+        };
+
+        // Announce
+        if (socket && currentRoom) {
+            socket.emit('agent_file_announce', {
+                roomId: currentRoom,
+                file: {
+                    id: metadata.id,
+                    name: metadata.name,
+                    size: metadata.size,
+                    ip: getLocalIp(),
+                    port: PORT
+                }
+            });
+        }
+
+        // Return legacy structure expected by client
         res.json({ success: true, file: activeFile });
 
     } catch (err) {
-        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -151,57 +216,28 @@ app.post('/join-room', (req, res) => {
     res.json({ success: true, roomId });
 });
 
-// 4. Stream File (The Transfer Logic)
+// 4. Stream Endpoint (Delegated to StreamHandler)
 app.get('/stream/:fileId', (req, res) => {
     const { fileId } = req.params;
+    handleStreamRequest(req, res, fileId);
+});
 
-    // Explicit CORS for Media
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+// 5. Metadata Endpoint (For polling updated duration)
+app.get('/metadata/:streamId', (req, res) => {
+    const { streamId } = req.params;
+    const streamData = activeStreams.get(streamId);
 
-    // Security: Only allow if it matches active file (Simplest 'token')
-    if (!activeFile || activeFile.id !== fileId) {
-        console.log(`[Agent] Stream 404: ActiveFile=${activeFile?.id} Request=${fileId}`);
-        return res.status(404).json({ error: 'File not active or not found' });
+    if (!streamData) {
+        return res.status(404).json({ error: 'Stream not found' });
     }
 
-    console.log(`[Agent] Streaming: ${activeFile.name} (${activeFile.type}) to ${req.ip} Range: ${req.headers.range || 'Full'}`);
-
-    const fileSize = activeFile.size;
-    const range = req.headers.range;
-
-    if (range) {
-        // Handle Range Requests (Resume/Seek)
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-        if (start >= fileSize) {
-            res.status(416).send('Requested range not satisfiable\n' + start + ' >= ' + fileSize);
-            return;
-        }
-
-        const chunksize = (end - start) + 1;
-        const file = fs.createReadStream(activeFile.path, { start, end });
-        const head = {
-            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-            'Accept-Ranges': 'bytes',
-            'Content-Length': chunksize,
-            'Content-Type': activeFile.type,
-            'Access-Control-Allow-Origin': '*' // Helper ensure
-        };
-
-        res.writeHead(206, head);
-        file.pipe(res);
-    } else {
-        const head = {
-            'Content-Length': fileSize,
-            'Content-Type': activeFile.type,
-            'Access-Control-Allow-Origin': '*'
-        };
-        res.writeHead(200, head);
-        fs.createReadStream(activeFile.path).pipe(res);
-    }
+    res.json({
+        streamId: streamId,
+        duration: streamData.duration || 0,
+        name: streamData.name,
+        size: streamData.size,
+        streams: streamData.streams || []
+    });
 });
 
 // Handle Preflight

@@ -3,10 +3,13 @@
 This is the standalone **Local Transfer Agent** for the Chitrakatha Watch Party app. It enables high-speed, direct peer-to-peer file streaming over your local network (LAN), bypassing browser limitations.
 
 ## ✨ Features
-*   **Direct Streaming**: Share files from your disk without uploading to a cloud server.
-*   **LAN Transfer**: High-speed transfers (10-50+ MB/s) depending on your Wi-Fi/Ethernet.
-*   **Format Support**: Smartly detects and streams `.mp4`, `.mkv`, `.webm`, and `.avi`.
-*   **Auto-Discovery**: Automatically connects to the current watch party room.
+*   **Torrent Streaming**: Stream torrents instantly via magnet links - no waiting for full downloads!
+*   **Background Metadata Extraction**: Torrents start playing immediately, duration appears within 10-60 seconds
+*   **Direct File Streaming**: Share files from your disk without uploading to a cloud server
+*   **LAN Transfer**: High-speed transfers (10-50+ MB/s) depending on your Wi-Fi/Ethernet
+*   **Smart Transcoding**: Automatic conversion of `.mkv`, `.avi`, `.wmv` to browser-compatible formats
+*   **Enhanced Stability**: Crash-resistant with comprehensive error handling for disconnects
+*   **Auto-Discovery**: Automatically connects to the current watch party room
 
 ## 📥 Installation
 
@@ -42,11 +45,18 @@ Download the latest `chitrakatha_agent.exe` from the [Releases Page](../../relea
     *   **Viewers**: Click "Download & Play". The video streams directly from the host's computer to the viewer's computer.
 
 ## ⚙️ Configuration
-The agent runs on **Port 5178** by default.
-To change the port, set the `PORT` environment variable:
-```bash
-PORT=6000 npm start
-```
+The agent runs on **Port 3002** by default.
+
+### Change Port
+You can configure the port in three ways:
+1. **Via Web UI**: Enter the port number in the "Agent" input field in the header
+2. **Environment Variable**: `PORT=3003 npm start`
+3. **Config File**: Create `agent-config.json` with `{"PORT": 3003}`
+
+### Set Custom IP (for VPN)
+For internet streaming via ZeroTier/Tailscale:
+1. Create or edit `agent-config.json`
+2. Set your VPN IP: `{"AGENT_IP": "10.147.17.5"}`
 
 ## 🐛 Troubleshooting
 
@@ -59,8 +69,11 @@ PORT=6000 npm start
     *   Ensure both Host and Viewer are on the **same LAN** (Wi-Fi network).
 
 ## 🏗️ Architecture
-*   **Tech Stack**: Node.js, Express, Socket.io Client.
-    *   Explicitly allows `Access-Control-Allow-Origin: *` to let the web app fetch streams.
+*   **Tech Stack**: Node.js, Express, Socket.io Client, WebTorrent, FFmpeg
+*   **Stream Handling**: Multi-format support with automatic transcoding
+*   **Torrent Engine**: WebTorrent for efficient P2P streaming
+*   **Metadata Extraction**: Background FFprobe processing with retry logic
+*   **CORS**: Explicitly allows `Access-Control-Allow-Origin: *` for web app access
 
 ## 🌐 Using over the Internet (VPN Guide)
 
