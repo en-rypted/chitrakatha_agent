@@ -2,14 +2,43 @@
 
 **Initial Release with High-Speed LAN Transfer!**
 
-We are excited to launch the standalone Chitrakatha Agent.
+We are excited to launch the standalone 🚀 ChitraKatha Local Agent - Latest Release
 
-## ✨ Key Features
-- **Local P2P Streaming**: Stream videos directly from your disk to viewers on your LAN.
-- **Auto-Discovery**: Zero configuration needed; just run it and it stays online.
-- **Smart MIME Detection**: Improved support for .mp4, .mkv, .webm.
-- **Visual Feedback**: Real-time logging of files and connections.
+NEW FEATURES:
+✨ Background Torrent Metadata Extraction
+   - Torrents now start playing INSTANTLY (no waiting for metadata)
+   - Duration automatically appears after 10-60 seconds
+   - Smart retry logic with 5 attempts over 150 seconds
+   - Works for both solo and multi-user watch parties
 
-## 📦 What's Included
+✨ Metadata Polling API
+   - New /metadata/:streamId endpoint for real-time duration updates
+   - Frontend automatically polls for metadata every 15 seconds
+   - Enables seek bar functionality once duration is available
+
+IMPROVEMENTS:
+🛡️ Enhanced Stability
+   - Fixed "Writable stream closed prematurely" crashes
+   - Added comprehensive error handling for disconnects
+   - Global exception handlers prevent agent crashes
+   - Graceful handling of client disconnections during streaming
+
+🔧 Better Stream Management
+   - Improved torrent file path detection
+   - Multiple path construction strategies for reliability
+   - Enhanced logging for debugging
+
+TECHNICAL DETAILS:
+- Port: Configurable via UI (default 3002)
+- Supports: Torrents, Local Files, Remote URLs
+- Transcoding: Automatic for .mkv, .avi, .wmv formats
+- WebTorrent integration with optimized settings
+
+SETUP:
+1. Run the installer (handles firewall automatically)
+2. Configure port in the web UI if needed
+3. Start streaming instantly!
+
+For issues or feedback, visit: github.com/yourusername/watch-party
 - `chitrakatha_agent.exe`: The standalone Windows executable.
 - `README.md`: Setup and troubleshooting guide.
